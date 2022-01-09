@@ -5,17 +5,63 @@ import * as cocossd from "@tensorflow-models/coco-ssd";
 import Webcam from "react-webcam";
 import "./App.css";
 import { drawRect } from "./utilities";
+import { count } from "./utilities";
 
 function App() {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
+  const [peopleCount, setPeopleCount] = useState(0);
+
+  // Main function
+  const runCoco = async () => {
+    const net = await cocossd.load();
+    console.log("Handpose model loaded.");
+    //  Loop and detect hands
+    setInterval(() => {
+      detect(net);
+    }, 1000);
+  };
+
+  const detect = async (net) => {
+    // Check data is available
+    if (
+      typeof webcamRef.current !== "undefined" &&
+      webcamRef.current !== null &&
+      webcamRef.current.video.readyState === 4
+    ) {
+      // Get Video Properties
+      const video = webcamRef.current.video;
+      const videoWidth = webcamRef.current.video.videoWidth;
+      const videoHeight = webcamRef.current.video.videoHeight;
+
+      // Set video width
+      webcamRef.current.video.width = videoWidth;
+      webcamRef.current.video.height = videoHeight;
+
+      // Set canvas height and width
+      canvasRef.current.width = videoWidth;
+      canvasRef.current.height = videoHeight;
+
+      // Make Detections
+      const obj = await net.detect(video);
+
+      // Draw mesh
+      const ctx = canvasRef.current.getContext("2d");
+      drawRect(obj, ctx);
+      setPeopleCount(count);
+    }
+  };
+
+  useEffect(() => {
+    runCoco();
+  }, []);
 
   return (
     <div className="App">
       <header className="App-header">
         <Webcam
           ref={webcamRef}
-          muted={true} 
+          muted={true}
           style={{
             position: "absolute",
             marginLeft: "auto",
@@ -44,6 +90,19 @@ function App() {
           }}
         />
       </header>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 100,
+          alignContent: "center",
+          width: "100%",
+          height: 50,
+        }}
+      >
+        <span
+          style={{ fontSize: 24, color: "white" }}
+        >{`${peopleCount} kişi tespit edildi.`}</span>
+      </div>
     </div>
   );
 }
